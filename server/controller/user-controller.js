@@ -22,27 +22,34 @@ export const userSignup = async (request, response) => {
 
 export const userLogin = async (request, response) => {
     try {
-        const username = request.body.username;
-        const password = request.body.password;
-
+        const { username, password } = request.body;
         let user = await User.findOne({ username: username });
-        const matchPassword = await comparePassword(password, user.password)
-        if (!matchPassword) {
-            return response.status(401).send({
+        if (!user) {
+            return response.status(400).json({
                 success: false,
-                message: "Incorrect Password"
-            })
+                message: "User does not exist"
+            });
         }
+
+        const matchPassword = await comparePassword(password, user.password);
+        if (!matchPassword) {
+            return response.status(401).json({
+                success: false,
+                message: "Incorrect password"
+            });
+        }
+
         let token = await JWT.sign({ _id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-        if (user) {
-            return response.status(200).json({ data: user, token });
-        } else {
-            return response.status(401).json('Invalid login');
-        }
-
+        return response.status(200).json({
+            success: true,
+            data: user,
+            token
+        });
     } catch (error) {
-        response.status(500).json('Error', error.message);
-
+        console.error('Error:', error);
+        response.status(500).json({
+            success: false,
+            message: 'Internal server error'
+        });
     }
-
-}
+};
